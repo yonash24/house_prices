@@ -166,7 +166,51 @@ class DataCleaning:
     def __init__(self,data_dict:Dict[str, pd.DataFrame]):
         self.data_dict = data_dict
 
-    #fill missing values
+    # fill missing values
     def fill_miss_vals(self):
         for key, df in self.data_dict.items():
-            pass
+            cols_fill_none = [
+                'Alley', 'Fence', 'PoolQC', 'MiscFeature', 'FireplaceQu',
+                'BsmtQual', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2',
+                'GarageType', 'GarageFinish', 'GarageQual', 'GarageCond', 'MasVnrType'
+            ]
+            df[cols_fill_none] = df[cols_fill_none].fillna('None')
+
+            cols_fill_zero = [
+                'MasVnrArea', 'BsmtFullBath', 'BsmtHalfBath', 'BsmtFinSF1', 
+                'BsmtFinSF2', 'BsmtUnfSF', 'TotalBsmtSF', 'GarageYrBlt', 
+                'GarageCars', 'GarageArea'
+            ]
+            df[cols_fill_zero] = df[cols_fill_zero].fillna(0)
+
+            df['LotFrontage'] = df.groupby('Neighborhood')['LotFrontage'].transform(
+                lambda x: x.fillna(x.median())
+            )
+            cols_fill_mode = [
+                'Electrical', 'Utilities', 'Exterior1st', 
+                'Exterior2nd', 'KitchenQual', 'SaleType', 'MSZoning'
+            ]
+            
+            for col in cols_fill_mode:
+                if col in df.columns:
+                    mode_val = df[col].mode()[0]
+                    df[col] = df[col].fillna(mode_val)
+            self.data_dict[key] = df
+            
+        logging.info("Successfully filled missing values based on domain logic.")
+
+    #handle outliers remove extrem values
+    def outliers_handler(self):
+        self.data_dict["train"] = self.data_dict["train"].drop(self.data_dict["train"][(self.data_dict["train"]["GrLivArea"] > 4000) & (self.data_dict["train"]["SalePrice"] < 300000)].index)
+        
+    #remove irrelevant columns
+    def remove_nois(self):
+        cols_to_remove = ["Id", "Utilities", "Street"]
+        self.data_dict["train"] = self.data_dict["train"].drop(columns=cols_to_remove)
+        self.data_dict["test"] = self.data_dict["test"].drop(columns=cols_to_remove)
+        logging.info(f"Removed irrelevant columns: {cols_to_remove}")
+
+"""
+create class that preprocess the data 
+and make 
+"""

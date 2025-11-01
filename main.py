@@ -17,7 +17,7 @@ def main():
     #analyzer.features_coreleation()
     #analyzer.features_scatter("BedroomAbvGr", "HalfBath")
     #analyzer.categorical_features_analysis()
-
+    
 
 
 if __name__ == "__main__":
