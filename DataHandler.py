@@ -10,6 +10,7 @@ import pathlib
 import logging
 from typing import Dict, Tuple
 import seaborn as sns
+from sklearn.preprocessing import StandardScaler
 
 """
 create class to import the required data from kaggle into a directory
@@ -72,7 +73,7 @@ class DataInfo:
         self.data_dict = data_dict
         self.train_df = data_dict["train"]
         self.test = data_dict["test"]
-        self.sample_sub_mission = data_dict["sample_submission"]
+        self.sample_submission = data_dict["sample_submission"]
     
     #create a histogram of salePrise
     def salePrise_info(self):
@@ -212,5 +213,109 @@ class DataCleaning:
 
 """
 create class that preprocess the data 
-and make 
+and make it fit to our models to work with
 """
+
+class DataPreProcessing:
+    
+    #create constructor to the class
+    def __init__(self, clean_data:Dict[str, pd.DataFrame]):
+        self.clean_data = clean_data
+
+    #feature engineering create new feature to our data frame
+    def features_engoneer(self):
+        self.clean_data["train"]["TotalSF"] = self.clean_data["train"]['TotalBsmtSF'] + self.clean_data["train"]['1stFlrSF'] + self.clean_data["train"]['2ndFlrSF']
+        self.clean_data["test"]["TotalSF"] = self.clean_data["test"]['TotalBsmtSF'] + self.clean_data["test"]['1stFlrSF'] + self.clean_data["test"]['2ndFlrSF']
+
+        self.clean_data["train"]["ToatalPorch"] = self.clean_data["train"]["OpenPorchSF"] + self.clean_data["train"]["EnclosedPorch"] + self.clean_data["train"]["3SsnPorch"] +self.clean_data["train"]["ScreenPorch"] + self.clean_data["train"]["WoodDeckSF"]
+        self.clean_data["test"]["ToatalPorch"] = self.clean_data["test"]["OpenPorchSF"] + self.clean_data["test"]["EnclosedPorch"] + self.clean_data["test"]["3SsnPorch"] +self.clean_data["test"]["ScreenPorch"] + self.clean_data["test"]["WoodDeckSF"]
+
+        self.clean_data["train"]["ToatalBathroom"] = self.clean_data["train"]["BsmtFullBath"] + self.clean_data["train"]["FullBath"] + self.clean_data["train"]["BsmtHalfBath"]*0.5 +self.clean_data["train"]["HalfBath"]*0.5 
+        self.clean_data["test"]["ToatalBathroom"] = self.clean_data["test"]["BsmtFullBath"] + self.clean_data["test"]["FullBath"] + self.clean_data["test"]["BsmtHalfBath"]*0.5 +self.clean_data["test"]["HalfBath"]*0.5 
+
+        self.clean_data["train"]["HouseAge"] = self.clean_data["train"]["YrSold"] - self.clean_data["train"]["YearBuilt"]
+        self.clean_data["test"]["HouseAge"] = self.clean_data["test"]["YrSold"] - self.clean_data["test"]["YearBuilt"]
+
+        self.clean_data["train"]["RemodelAge"] = self.clean_data["train"]["YrSold"] - self.clean_data["train"]["YearRemodAdd"]
+        self.clean_data["test"]["RemodelAge"] = self.clean_data["test"]["YrSold"] - self.clean_data["test"]["YearRemodAdd"]
+
+        self.clean_data["train"]["IsNew"] = (self.clean_data["train"]["YrSold"] == self.clean_data["train"]["YearRemodAdd"]).astype(int)
+        self.clean_data["test"]["IsNew"] = (self.clean_data["test"]["YrSold"] == self.clean_data["test"]["YearRemodAdd"]).astype(int)
+
+        self.clean_data["train"]["HasBsmt"] = (self.clean_data["train"]["TotalBsmtSF"] > 0).astype(int)
+        self.clean_data["test"]["HasBsmt"] = (self.clean_data["test"]["TotalBsmtSF"] > 0).astype(int)
+
+        self.clean_data["train"]["HasPool"] = (self.clean_data["train"]["PoolArea"] > 0).astype(int)
+        self.clean_data["test"]["HasPool"] = (self.clean_data["test"]["PoolArea"] > 0).astype(int)
+
+        self.clean_data["train"]["HasFireplace"] = (self.clean_data["train"]["Fireplaces"] > 0).astype(int)
+        self.clean_data["test"]["HasFireplace"] = (self.clean_data["test"]["Fireplaces"] > 0).astype(int)
+
+    #handle with Skewness 
+    def Skewness_handle(self):
+        numeric_cols = self.clean_data["train"].select_dtypes(include=np.number).columns
+        train_skewness = self.clean_data["train"][numeric_cols].skew()
+        train_skewd_cols = train_skewness[abs(train_skewness) > 0.75].index.drop("SalePrice")
+
+        for key, df in self.clean_data.items():
+            for col in df:
+                if col in train_skewd_cols:
+                    df[col] = np.log1p(df[col])
+                self.clean_data[key] = df
+        logging.info("successfully handled with skewd values")
+
+    #encod the categorical columns 
+    def encode_df(self):
+        train_df = self.clean_data["train"]
+        test_df = self.clean_data["test"]
+
+        all_cols = train_df.columns
+        numeric_cols = train_df.select_dtypes(include=np.number).columns
+        categorical_cols = all_cols - numeric_cols
+        
+        train_length = len(train_df)
+        concat_df = pd.concat((train_df, test_df), sort=False).reset_index(drop=True)
+        dumm_df = pd.get_dummies(concat_df, categorical_cols, drop_first=True)
+
+        self.clean_data["train"] = dumm_df[:train_length]
+        self.clean_data["test"] = dumm_df[train_length:]
+        logging.info("Successfully encoded train and test data with matching columns.")
+
+    #stantarize the data for the ml models
+    def data_standardize(self):
+        
+        train_df = self.clean_data["train"]
+        test_df = self.clean_data["test"]
+
+        try:
+            y_train = np.log1p(train_df.pop('SalePrice'))
+            self.clean_data['y_train'] = y_train
+            logging.info("Target variable 'y_train' separated and log-transformed.")
+        except KeyError:
+            logging.error("'SalePrice' not found in train data. Cannot create y_train.")
+            return
+
+        X_train = train_df
+        X_test = test_df.drop('SalePrice', axis=1, errors='ignore') 
+        cols_to_scale = X_train.select_dtypes(include=np.number).columns     
+        logging.info(f"Standardizing {len(cols_to_scale)} numeric features...")
+
+        scaler = StandardScaler()   
+        scaler.fit(X_train[cols_to_scale])
+
+        X_train[cols_to_scale] = pd.DataFrame(
+            scaler.transform(X_train[cols_to_scale]),
+            columns=cols_to_scale,
+            index=X_train.index
+        )
+        
+        X_test[cols_to_scale] = pd.DataFrame(
+            scaler.transform(X_test[cols_to_scale]),
+            columns=cols_to_scale,
+            index=X_test.index
+        )
+
+        self.clean_data['X_train'] = X_train
+        self.clean_data['X_test'] = X_test
+
+        
