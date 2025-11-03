@@ -57,7 +57,7 @@ class ImportData():
                 data_dict[key] = df
             except Exception as e:
                 logging.error(f"exception {e} has occured in file: {file}")
-        
+        data_dict.pop("sample_submission")
         logging.info("successfully transfered the data into data frames")
         return data_dict
 
@@ -73,7 +73,6 @@ class DataInfo:
         self.data_dict = data_dict
         self.train_df = data_dict["train"]
         self.test = data_dict["test"]
-        self.sample_submission = data_dict["sample_submission"]
     
     #create a histogram of salePrise
     def salePrise_info(self):
@@ -223,7 +222,7 @@ class DataPreProcessing:
         self.clean_data = clean_data
 
     #feature engineering create new feature to our data frame
-    def features_engoneer(self):
+    def features_engineer(self):
         self.clean_data["train"]["TotalSF"] = self.clean_data["train"]['TotalBsmtSF'] + self.clean_data["train"]['1stFlrSF'] + self.clean_data["train"]['2ndFlrSF']
         self.clean_data["test"]["TotalSF"] = self.clean_data["test"]['TotalBsmtSF'] + self.clean_data["test"]['1stFlrSF'] + self.clean_data["test"]['2ndFlrSF']
 
@@ -271,7 +270,7 @@ class DataPreProcessing:
 
         all_cols = train_df.columns
         numeric_cols = train_df.select_dtypes(include=np.number).columns
-        categorical_cols = all_cols - numeric_cols
+        categorical_cols = all_cols.difference(numeric_cols)
         
         train_length = len(train_df)
         concat_df = pd.concat((train_df, test_df), sort=False).reset_index(drop=True)

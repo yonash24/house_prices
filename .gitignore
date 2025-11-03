@@ -1,1 +1,3 @@
 /.venv
+__pycache__/MlModel.cpython-312.pyc
+__pycache__/DataHandler.cpython-312.pyc
