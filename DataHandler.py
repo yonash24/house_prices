@@ -12,6 +12,8 @@ from typing import Dict, Tuple
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 """
 create class to import the required data from kaggle into a directory
 transfer it into a dictionary of data frames
@@ -165,6 +167,7 @@ class DataCleaning:
     #create constructor for the class    
     def __init__(self,data_dict:Dict[str, pd.DataFrame]):
         self.data_dict = data_dict
+        
 
     # fill missing values
     def fill_miss_vals(self):

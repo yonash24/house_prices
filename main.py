@@ -8,6 +8,7 @@ def main():
     ### import the data ###
     ImportData.import_data()
     data_dict = ImportData.to_df()
+    house_id = data_dict["test"]["Id"]
 
     ### analyz the data ###
     #analyzer = DataInfo(data_dict)
@@ -37,12 +38,14 @@ def main():
     test = clean_data["X_test"]
 
     ### create and train the models ###
-    trainer = Models(x_train, test, y_train)
+    trainer = Models(x_train, test, y_train, house_id)
     trainer.choose_model()
     #its turnd out that ridge regression is the best one for us
     trainer.choose_model()
-    trainer.ridge_model()
-    trainer.XGB_model()
+    trainer.ridge_optimaizer()
+    trainer.xgb_optimaizer()
+    trainer.xgb_optimaizer()
+    trainer.hybride_model()
     
 
 
