@@ -8,6 +8,7 @@ from sklearn.model_selection import cross_val_score, KFold, GridSearchCV
 import logging
 from typing import Tuple
 from sklearn.base import BaseEstimator
+import joblib
 
 """
 craete class that build train and evaluate the regression models 
@@ -75,6 +76,8 @@ class Models:
         self.ridge_model = grid_search.best_estimator_
         self.best_model_score = best_score = grid_search.best_score_
 
+        joblib.dump(self.ridge_model, "ridge_model.pkl")
+
         logging.info(f"lasso best evaluation is: {self.best_model_score}")
 
     #optimaize xgb model
@@ -99,6 +102,21 @@ class Models:
         self.XGB_model = grid_search.best_estimator_
         self.second_best_score = grid_search.best_score_
 
+        joblib.dump(self.XGB_model, "xgb_model.pkl")
+
         logging.info(f"the best xgb model rmse is: {-self.second_best_score}")
 
-        
+    #create the hybride model save it for csv 
+    def hybride_model(self):
+        ridge_prediction = self.ridge_model.predict(self.test_df)
+        xgb_prediction = self.xgb_model.predict(self.test_df)
+
+        hybride_prediction = (ridge_prediction * 0.75) + (xgb_prediction * 0.25)
+        final_prediction = np.expm1(hybride_prediction)
+
+        submission_df = pd.DataFrame({
+            "Id" : self.house_id,
+            "SalePrice" : final_prediction
+        })
+
+        submission_df.to_csv("submission.csv", index=False)  

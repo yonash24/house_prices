@@ -11,6 +11,7 @@ import logging
 from typing import Dict, Tuple
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
+import joblib
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -319,5 +320,7 @@ class DataPreProcessing:
 
         self.clean_data['X_train'] = X_train
         self.clean_data['X_test'] = X_test
+
+        joblib.dump(scaler, "scaler.pkl")
 
         
